@@ -1,13 +1,14 @@
-image: node:latest
+image: node:20 # Use a modern version of Node
 
 pages:
   stage: deploy
   script:
     - npm install
     - npm run build
-    - mv dist public
+    - rm -rf public
+    - mv dist public # GitLab Pages looks for a folder named 'public'
   artifacts:
     paths:
       - public
   only:
-    - main
+    - main # Only deploys when you push to the main branch
