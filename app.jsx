@@ -204,14 +204,15 @@ function ChallengeCard({ challenge, onSelect }) {
 
 function PuzzlePage({ challenge, onBack }) {
   const [selectedCard, setSelectedCard] = useState(null);
+  const [expandedCard, setExpandedCard] = useState(null);
 
-  // Mock game state
+  // Mock game state with real card images
   const gameState = {
     opponent: {
-      activePokemon: { name: "Charizard", hp: 150, maxHp: 150 },
+      activePokemon: { name: "Charizard", hp: 150, maxHp: 150, image: "https://images.pokemontcg.io/base1/4/high.png" },
       bench: [
-        { name: "Pikachu", hp: 60 },
-        { name: "Dragonite", hp: 120 },
+        { name: "Pikachu", hp: 60, image: "https://images.pokemontcg.io/base1/25/high.png" },
+        { name: "Dragonite", hp: 120, image: "https://images.pokemontcg.io/base1/149/high.png" },
         null,
         null,
         null,
@@ -219,20 +220,20 @@ function PuzzlePage({ challenge, onBack }) {
       hand: 7,
     },
     player: {
-      activePokemon: { name: "Blastoise", hp: 130, maxHp: 130 },
+      activePokemon: { name: "Blastoise", hp: 130, maxHp: 130, image: "https://images.pokemontcg.io/base1/2/high.png" },
       bench: [
-        { name: "Squirtle", hp: 40 },
-        { name: "Wartortle", hp: 80 },
-        { name: "Venusaur", hp: 110 },
+        { name: "Squirtle", hp: 40, image: "https://images.pokemontcg.io/base1/63/high.png" },
+        { name: "Wartortle", hp: 80, image: "https://images.pokemontcg.io/base1/62/high.png" },
+        { name: "Venusaur", hp: 110, image: "https://images.pokemontcg.io/base1/15/high.png" },
         null,
         null,
       ],
       hand: [
-        { name: "Energy", type: "Water" },
-        { name: "Potion", type: "Trainer" },
-        { name: "Professor Oak", type: "Trainer" },
-        { name: "Energy", type: "Water" },
-        { name: "Retreat Cost Card", type: "Energy" },
+        { name: "Water Energy", type: "Energy", image: "https://images.pokemontcg.io/base1/102/high.png" },
+        { name: "Potion", type: "Trainer", image: "https://images.pokemontcg.io/base1/94/high.png" },
+        { name: "Professor Oak", type: "Trainer", image: "https://images.pokemontcg.io/base1/88/high.png" },
+        { name: "Water Energy", type: "Energy", image: "https://images.pokemontcg.io/base1/102/high.png" },
+        { name: "Switch", type: "Trainer", image: "https://images.pokemontcg.io/base1/92/high.png" },
       ],
       deck: 12,
       discard: 8,
@@ -281,15 +282,27 @@ function PuzzlePage({ challenge, onBack }) {
                 <div className="text-white text-xs mb-2 font-semibold">Bench</div>
                 <div className="grid grid-cols-5 gap-2">
                   {gameState.opponent.bench.map((pokemon, idx) => (
-                    <div key={idx} className="bg-slate-700/50 border-2 border-slate-600 rounded-lg p-2 text-center aspect-square flex flex-col items-center justify-center hover:border-blue-400 transition-colors">
-                      {pokemon ? (
-                        <>
-                          <div className="text-white font-bold text-xs">{pokemon.name}</div>
-                          <div className="text-slate-400 text-[10px] mt-1">{pokemon.hp} HP</div>
-                        </>
-                      ) : (
-                        <div className="text-slate-500 text-[10px]">Empty</div>
-                      )}
+                    <div key={idx}>
+                      <div className="bg-slate-700/50 border-2 border-slate-600 rounded-lg overflow-hidden hover:border-blue-400 transition-colors cursor-pointer" onClick={() => pokemon && setExpandedCard(pokemon)}>
+                        {pokemon ? (
+                          <img 
+                            src={pokemon.image} 
+                            alt={pokemon.name}
+                            className="w-full h-20 object-cover hover:opacity-80 transition-opacity cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExpandedCard(pokemon);
+                            }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.parentElement.innerHTML = `<div class="w-full h-20 flex flex-col items-center justify-center text-center"><div class="text-white font-bold text-xs px-1">${pokemon.name}</div></div>`;
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-20 flex items-center justify-center text-slate-500 text-[10px]">Empty</div>
+                        )}
+                      </div>
+                      {pokemon && <div className="text-white text-[10px] text-center mt-1 truncate cursor-pointer hover:text-blue-300" onClick={() => setExpandedCard(pokemon)}>{pokemon.name}</div>}
                     </div>
                   ))}
                 </div>
@@ -297,9 +310,21 @@ function PuzzlePage({ challenge, onBack }) {
 
               {/* Opponent Active Pokémon */}
               <div className="mb-6">
-                <div className="bg-red-900/50 border-2 border-red-700 rounded-lg p-4 text-center w-40 h-40 flex flex-col items-center justify-center hover:border-red-500 transition-colors mx-auto">
-                  <div className="text-white font-bold text-sm">{gameState.opponent.activePokemon.name}</div>
-                  <div className="text-red-300 text-xs mt-2">{gameState.opponent.activePokemon.hp}/{gameState.opponent.activePokemon.maxHp} HP</div>
+                <div className="bg-red-900/50 border-2 border-red-700 rounded-lg p-2 text-center w-40 h-48 flex flex-col items-center justify-center hover:border-red-500 transition-colors mx-auto overflow-hidden cursor-pointer" onClick={() => setExpandedCard(gameState.opponent.activePokemon)}>
+                  <img 
+                    src={gameState.opponent.activePokemon.image} 
+                    alt={gameState.opponent.activePokemon.name}
+                    className="w-full h-full object-cover rounded hover:opacity-80 transition-opacity cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setExpandedCard(gameState.opponent.activePokemon);
+                    }}
+                    onError={(e) => e.target.style.display = 'none'}
+                  />
+                </div>
+                <div className="text-white text-center text-xs mt-2">
+                  <div className="truncate font-bold text-[10px]">{gameState.opponent.activePokemon.name}</div>
+                  <div className="font-bold">{gameState.opponent.activePokemon.hp}/{gameState.opponent.activePokemon.maxHp} HP</div>
                 </div>
               </div>
             </div>
@@ -326,9 +351,21 @@ function PuzzlePage({ challenge, onBack }) {
             <div className="flex-1">
               {/* Active Pokémon */}
               <div className="mb-4">
-                <div className="bg-blue-900/50 border-2 border-blue-600 rounded-lg p-4 text-center w-40 h-40 flex flex-col items-center justify-center hover:border-blue-400 transition-colors cursor-pointer mx-auto">
-                  <div className="text-white font-bold text-sm">{gameState.player.activePokemon.name}</div>
-                  <div className="text-blue-300 text-xs mt-2">{gameState.player.activePokemon.hp}/{gameState.player.activePokemon.maxHp} HP</div>
+                <div className="bg-blue-900/50 border-2 border-blue-600 rounded-lg p-2 text-center w-40 h-48 flex flex-col items-center justify-center hover:border-blue-400 transition-colors cursor-pointer mx-auto overflow-hidden" onClick={() => setExpandedCard(gameState.player.activePokemon)}>
+                  <img 
+                    src={gameState.player.activePokemon.image} 
+                    alt={gameState.player.activePokemon.name}
+                    className="w-full h-full object-cover rounded hover:opacity-80 transition-opacity cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setExpandedCard(gameState.player.activePokemon);
+                    }}
+                    onError={(e) => e.target.style.display = 'none'}
+                  />
+                </div>
+                <div className="text-white text-center text-xs mt-2">
+                  <div className="truncate font-bold text-[10px]">{gameState.player.activePokemon.name}</div>
+                  <div className="font-bold">{gameState.player.activePokemon.hp}/{gameState.player.activePokemon.maxHp} HP</div>
                 </div>
               </div>
 
@@ -337,15 +374,27 @@ function PuzzlePage({ challenge, onBack }) {
                 <div className="text-white text-xs mb-2 font-semibold">Bench</div>
                 <div className="grid grid-cols-5 gap-2">
                   {gameState.player.bench.map((pokemon, idx) => (
-                    <div key={idx} className="bg-slate-700/50 border-2 border-slate-600 rounded-lg p-2 text-center aspect-square flex flex-col items-center justify-center hover:border-blue-400 transition-colors cursor-pointer">
-                      {pokemon ? (
-                        <>
-                          <div className="text-white font-bold text-xs">{pokemon.name}</div>
-                          <div className="text-slate-400 text-[10px] mt-1">{pokemon.hp} HP</div>
-                        </>
-                      ) : (
-                        <div className="text-slate-500 text-[10px]">Empty</div>
-                      )}
+                    <div key={idx}>
+                      <div className="bg-slate-700/50 border-2 border-slate-600 rounded-lg overflow-hidden hover:border-blue-400 transition-colors cursor-pointer" onClick={() => pokemon && setExpandedCard(pokemon)}>
+                        {pokemon ? (
+                          <img 
+                            src={pokemon.image} 
+                            alt={pokemon.name}
+                            className="w-full h-20 object-cover hover:opacity-80 transition-opacity cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExpandedCard(pokemon);
+                            }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.parentElement.innerHTML = `<div class="w-full h-20 flex flex-col items-center justify-center text-center"><div class="text-white font-bold text-xs px-1">${pokemon.name}</div></div>`;
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-20 flex items-center justify-center text-slate-500 text-[10px]">Empty</div>
+                        )}
+                      </div>
+                      {pokemon && <div className="text-white text-[10px] text-center mt-1 truncate cursor-pointer hover:text-blue-300" onClick={() => setExpandedCard(pokemon)}>{pokemon.name}</div>}
                     </div>
                   ))}
                 </div>
@@ -368,23 +417,64 @@ function PuzzlePage({ challenge, onBack }) {
           {/* Player Hand */}
           <div className="mb-4">
             <div className="text-white font-bold mb-3 text-sm uppercase tracking-wide">Your Hand</div>
-            <div className="flex gap-2 overflow-x-auto pb-2">
+            <div className="flex gap-3 overflow-x-auto pb-2">
               {gameState.player.hand.map((card, idx) => (
-                <div 
-                  key={idx}
-                  onClick={() => setSelectedCard(idx)}
-                  className={`flex-shrink-0 w-20 h-28 rounded-lg border-2 flex flex-col items-center justify-center cursor-pointer transition-all ${
-                    selectedCard === idx 
-                      ? 'border-yellow-400 bg-yellow-900/50 scale-105' 
-                      : 'border-slate-600 bg-slate-700/50 hover:border-blue-400'
-                  }`}
-                >
-                  <div className="text-white font-bold text-xs text-center px-1">{card.name}</div>
-                  <div className="text-slate-400 text-[10px] mt-1">{card.type}</div>
+                <div key={idx} className="flex-shrink-0">
+                  <div 
+                    onClick={() => setSelectedCard(idx)}
+                    className={`w-20 h-24 rounded-lg border-2 overflow-hidden cursor-pointer transition-all ${
+                      selectedCard === idx 
+                        ? 'border-yellow-400 bg-yellow-900/50 scale-105' 
+                        : 'border-slate-600 bg-slate-700/50 hover:border-blue-400'
+                    }`}
+                  >
+                    <img 
+                      src={card.image} 
+                      alt={card.name}
+                      className="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExpandedCard(card);
+                      }}
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.parentElement.innerHTML = `<div class="w-full h-full flex flex-col items-center justify-center p-1 text-center"><div class="text-white font-bold text-xs">${card.name}</div></div>`;
+                      }}
+                    />
+                  </div>
+                  <div className="text-white text-[10px] text-center mt-1 w-20 truncate">{card.name}</div>
                 </div>
               ))}
             </div>
           </div>
+
+          {/* Card Expanded Modal */}
+          {expandedCard && (
+            <div 
+              className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 animate-in fade-in duration-200"
+              onClick={() => setExpandedCard(null)}
+            >
+              <div 
+                className="relative animate-in scale-in duration-300 origin-center"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  onClick={() => setExpandedCard(null)}
+                  className="absolute -top-10 -right-10 w-8 h-8 bg-white hover:bg-slate-200 transition-colors rounded-full flex items-center justify-center font-bold text-slate-900 z-10"
+                >
+                  ✕
+                </button>
+                <img 
+                  src={expandedCard.image} 
+                  alt={expandedCard.name}
+                  className="max-w-md max-h-96 rounded-lg shadow-2xl"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                  }}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Player Info and Action Button */}
           <div className="flex gap-4 items-center">
