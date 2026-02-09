@@ -326,18 +326,38 @@ function PuzzlePage({ challenge, onBack }) {
             }
 
             // Check if there's a bench to promote from
-            const hasBench = isPlayerTarget
-              ? newGameState.player.bench.some(p => p !== null)
-              : newGameState.opponent.bench.some(p => p !== null);
-
-            if (!hasBench) {
-              // No bench = instant win for attacker
-              setGameWinner(isPlayerTarget ? 'opponent' : 'player');
-              setCurrentGameState(newGameState);
+            if (isPlayerTarget) {
+              // Player's Pokémon was knocked out
+              const hasBench = newGameState.player.bench.some(p => p !== null);
+              if (!hasBench) {
+                // No bench = opponent wins
+                setGameWinner('opponent');
+                setCurrentGameState(newGameState);
+              } else {
+                // Show bench selection for player
+                setShowBenchSelect('player');
+                setCurrentGameState(newGameState);
+              }
             } else {
-              // Show bench selection
-              setShowBenchSelect(isPlayerTarget ? 'player' : 'opponent');
-              setCurrentGameState(newGameState);
+              // Opponent's Pokémon was knocked out
+              const hasBench = newGameState.opponent.bench.some(p => p !== null);
+              if (!hasBench) {
+                // No bench = player wins
+                setGameWinner('player');
+                setCurrentGameState(newGameState);
+              } else {
+                // Auto-promote first available bench Pokémon for opponent
+                const firstBenchIndex = newGameState.opponent.bench.findIndex(p => p !== null);
+                const promotedPokemon = newGameState.opponent.bench[firstBenchIndex];
+                newGameState.opponent.activePokemon = {
+                  ...promotedPokemon,
+                  hp: promotedPokemon.hp || promotedPokemon.maxHp || 150,
+                  maxHp: promotedPokemon.maxHp || 150
+                };
+                newGameState.opponent.bench[firstBenchIndex] = null;
+                setCurrentGameState(newGameState);
+                setKnockedOut(null);
+              }
             }
           }, 1000);
         }
@@ -428,8 +448,8 @@ function PuzzlePage({ challenge, onBack }) {
                     alt={gameState.opponent.activePokemon.name}
                     className="w-full h-full object-cover rounded hover:opacity-80 transition-opacity cursor-pointer"
                     onClick={(e) => {
-                      e.stopPropagation();
-                      setExpandedCard(gameState.opponent.activePokemon);
+                      // Click image to open attack modal, not expand
+                      handleActivePokemonClick(gameState.opponent.activePokemon, false);
                     }}
                     onError={(e) => e.target.style.display = 'none'}
                   />
@@ -486,8 +506,8 @@ function PuzzlePage({ challenge, onBack }) {
                     alt={gameState.player.activePokemon.name}
                     className="w-full h-full object-cover rounded hover:opacity-80 transition-opacity cursor-pointer"
                     onClick={(e) => {
-                      e.stopPropagation();
-                      setExpandedCard(gameState.player.activePokemon);
+                      // Click image to open attack modal, not expand
+                      handleActivePokemonClick(gameState.player.activePokemon, true);
                     }}
                     onError={(e) => e.target.style.display = 'none'}
                   />
