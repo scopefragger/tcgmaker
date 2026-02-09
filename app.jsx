@@ -191,14 +191,23 @@ function ChallengeCard({ challenge, onSelect }) {
 function PuzzlePage({ challenge, onBack }) {
   const [selectedCard, setSelectedCard] = useState(null);
   const [expandedCard, setExpandedCard] = useState(null);
+  const [showAttackModal, setShowAttackModal] = useState(false);
+  const [attackingPokemon, setAttackingPokemon] = useState(null);
+  const [isAttacking, setIsAttacking] = useState(false);
+  const [isDamaged, setIsDamaged] = useState(false);
+  const [currentGameState, setCurrentGameState] = useState(null);
+  const [knockedOut, setKnockedOut] = useState(null);
+  const [showBenchSelect, setShowBenchSelect] = useState(false);
+  const [gameWinner, setGameWinner] = useState(null);
 
   // Load game state from challenge config
-  const gameState = {
+  const initialGameState = {
     opponent: {
       activePokemon: challenge.opponent.activePokemon,
       bench: challenge.opponent.bench,
       deckCount: challenge.opponent.deckCount,
       hand: 7,
+      prizes: 3,
     },
     player: {
       activePokemon: challenge.player.activePokemon,
@@ -206,7 +215,134 @@ function PuzzlePage({ challenge, onBack }) {
       deck: challenge.player.deckCount,
       discard: 8,
       hand: challenge.player.hand,
+      prizes: 3,
     },
+  };
+
+  // Initialize game state on mount
+  if (!currentGameState) {
+    setCurrentGameState(initialGameState);
+  }
+
+  const gameState = currentGameState || initialGameState;
+
+  // Handle clicking active Pokemon to show attacks
+  const handleActivePokemonClick = (pokemon, isPlayer) => {
+    if (pokemon.attacks || pokemon.ability) {
+      setAttackingPokemon({ pokemon, isPlayer });
+      setShowAttackModal(true);
+    }
+  };
+
+  // Handle bench promotion
+  const handleBenchPromotion = (benchIndex) => {
+    const newGameState = { ...currentGameState };
+
+    if (showBenchSelect === 'player') {
+      // Promote player's bench Pokemon
+      const promotedPokemon = newGameState.player.bench[benchIndex];
+      newGameState.player.activePokemon = {
+        ...promotedPokemon,
+        hp: promotedPokemon.hp || promotedPokemon.maxHp || 120,
+        maxHp: promotedPokemon.maxHp || 120
+      };
+      newGameState.player.bench[benchIndex] = null;
+    } else if (showBenchSelect === 'opponent') {
+      // Promote opponent's bench Pokemon
+      const promotedPokemon = newGameState.opponent.bench[benchIndex];
+      newGameState.opponent.activePokemon = {
+        ...promotedPokemon,
+        hp: promotedPokemon.hp || promotedPokemon.maxHp || 150,
+        maxHp: promotedPokemon.maxHp || 150
+      };
+      newGameState.opponent.bench[benchIndex] = null;
+    }
+
+    setCurrentGameState(newGameState);
+    setShowBenchSelect(false);
+    setKnockedOut(null);
+  };
+
+  // Handle attack execution
+  const handleAttack = (attack) => {
+    setShowAttackModal(false);
+
+    // Store attack damage for animation display
+    setAttackingPokemon(prev => ({ ...prev, lastDamage: attack.damage }));
+    setIsAttacking(true);
+
+    // Trigger attacker animation
+    setTimeout(() => {
+      setIsAttacking(false);
+      setIsDamaged(true);
+
+      // Apply damage
+      const newGameState = { ...currentGameState };
+      let targetPokemon;
+      let isPlayerTarget;
+
+      if (attackingPokemon.isPlayer) {
+        // Player attacking opponent
+        targetPokemon = newGameState.opponent.activePokemon;
+        targetPokemon.hp = Math.max(0, targetPokemon.hp - attack.damage);
+        newGameState.opponent.activePokemon = targetPokemon;
+        isPlayerTarget = false;
+      } else {
+        // Opponent attacking player
+        targetPokemon = newGameState.player.activePokemon;
+        targetPokemon.hp = Math.max(0, targetPokemon.hp - attack.damage);
+        newGameState.player.activePokemon = targetPokemon;
+        isPlayerTarget = true;
+      }
+
+      setCurrentGameState(newGameState);
+
+      // Remove damage animation and check for knockout
+      setTimeout(() => {
+        setIsDamaged(false);
+
+        // Check if Pokemon was knocked out
+        if (targetPokemon.hp === 0) {
+          setKnockedOut(isPlayerTarget ? 'player' : 'opponent');
+
+          // Death animation duration
+          setTimeout(() => {
+            // Take a prize card
+            if (isPlayerTarget) {
+              newGameState.opponent.prizes = (newGameState.opponent.prizes || 3) - 1;
+            } else {
+              newGameState.player.prizes = (newGameState.player.prizes || 3) - 1;
+            }
+
+            // Check for win conditions
+            if (isPlayerTarget && newGameState.opponent.prizes === 0) {
+              setGameWinner('opponent');
+              setCurrentGameState(newGameState);
+              return;
+            } else if (!isPlayerTarget && newGameState.player.prizes === 0) {
+              setGameWinner('player');
+              setCurrentGameState(newGameState);
+              return;
+            }
+
+            // Check if there's a bench to promote from
+            const hasBench = isPlayerTarget
+              ? newGameState.player.bench.some(p => p !== null)
+              : newGameState.opponent.bench.some(p => p !== null);
+
+            if (!hasBench) {
+              // No bench = instant win for attacker
+              setGameWinner(isPlayerTarget ? 'opponent' : 'player');
+              setCurrentGameState(newGameState);
+            } else {
+              // Show bench selection
+              setShowBenchSelect(isPlayerTarget ? 'player' : 'opponent');
+              setCurrentGameState(newGameState);
+            }
+          }, 1000);
+        }
+      }, 600);
+    }, 500);
   };
 
   return (
@@ -279,9 +415,16 @@ function PuzzlePage({ challenge, onBack }) {
 
               {/* Opponent Active Pokémon */}
               <div className="mb-6">
-                <div className="bg-red-900/50 border-2 border-red-700 rounded-lg p-2 text-center w-40 h-48 flex flex-col items-center justify-center hover:border-red-500 transition-colors mx-auto overflow-hidden cursor-pointer" onClick={() => setExpandedCard(gameState.opponent.activePokemon)}>
-                  <img 
-                    src={gameState.opponent.activePokemon.image} 
+                <div
+                  className={`relative bg-red-900/50 border-2 border-red-700 rounded-lg p-2 text-center w-40 h-48 flex flex-col items-center justify-center hover:border-red-500 transition-all mx-auto overflow-hidden cursor-pointer ${
+                    isDamaged && !attackingPokemon?.isPlayer ? 'animate-shake bg-red-600/70' : ''
+                  } ${isAttacking && attackingPokemon?.isPlayer ? 'ring-4 ring-yellow-400' : ''} ${
+                    knockedOut === 'opponent' ? 'animate-knockout' : ''
+                  }`}
+                  onClick={() => handleActivePokemonClick(gameState.opponent.activePokemon, false)}
+                >
+                  <img
+                    src={gameState.opponent.activePokemon.image}
                     alt={gameState.opponent.activePokemon.name}
                     className="w-full h-full object-cover rounded hover:opacity-80 transition-opacity cursor-pointer"
                     onClick={(e) => {
@@ -290,6 +433,16 @@ function PuzzlePage({ challenge, onBack }) {
                     }}
                     onError={(e) => e.target.style.display = 'none'}
                   />
+                  {/* HP Display Overlay */}
+                  <div className="absolute top-1 right-1 bg-red-700/90 px-2 py-1 rounded-md border border-red-500">
+                    <div className="text-white font-bold text-xs">{gameState.opponent.activePokemon.hp} HP</div>
+                  </div>
+                  {/* Damage indicator */}
+                  {isDamaged && !attackingPokemon?.isPlayer && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="text-6xl font-black text-red-500 animate-bounce">-{attackingPokemon?.lastDamage || 0}</div>
+                    </div>
+                  )}
                 </div>
                 <div className="text-white text-center text-xs mt-2">
                   <div className="truncate font-bold text-[10px]">{gameState.opponent.activePokemon.name}</div>
@@ -305,7 +458,7 @@ function PuzzlePage({ challenge, onBack }) {
               <span className="text-slate-400">Hand:</span> {gameState.opponent.hand} cards
             </div>
             <div className="bg-slate-700/50 px-4 py-2 rounded">
-              <span className="text-slate-400">Prizes:</span> 2 remaining
+              <span className="text-slate-400">Prizes:</span> {gameState.opponent.prizes} remaining
             </div>
           </div>
         </div>
@@ -320,9 +473,16 @@ function PuzzlePage({ challenge, onBack }) {
             <div className="flex-1">
               {/* Active Pokémon */}
               <div className="mb-4">
-                <div className="bg-blue-900/50 border-2 border-blue-600 rounded-lg p-2 text-center w-40 h-48 flex flex-col items-center justify-center hover:border-blue-400 transition-colors cursor-pointer mx-auto overflow-hidden" onClick={() => setExpandedCard(gameState.player.activePokemon)}>
-                  <img 
-                    src={gameState.player.activePokemon.image} 
+                <div
+                  className={`relative bg-blue-900/50 border-2 border-blue-600 rounded-lg p-2 text-center w-40 h-48 flex flex-col items-center justify-center hover:border-blue-400 transition-all cursor-pointer mx-auto overflow-hidden ${
+                    isDamaged && attackingPokemon?.isPlayer ? 'animate-shake bg-red-600/70' : ''
+                  } ${isAttacking && !attackingPokemon?.isPlayer ? 'ring-4 ring-yellow-400' : ''} ${
+                    knockedOut === 'player' ? 'animate-knockout' : ''
+                  }`}
+                  onClick={() => handleActivePokemonClick(gameState.player.activePokemon, true)}
+                >
+                  <img
+                    src={gameState.player.activePokemon.image}
                     alt={gameState.player.activePokemon.name}
                     className="w-full h-full object-cover rounded hover:opacity-80 transition-opacity cursor-pointer"
                     onClick={(e) => {
@@ -331,6 +491,16 @@ function PuzzlePage({ challenge, onBack }) {
                     }}
                     onError={(e) => e.target.style.display = 'none'}
                   />
+                  {/* HP Display Overlay */}
+                  <div className="absolute top-1 right-1 bg-blue-700/90 px-2 py-1 rounded-md border border-blue-500">
+                    <div className="text-white font-bold text-xs">{gameState.player.activePokemon.hp} HP</div>
+                  </div>
+                  {/* Damage indicator */}
+                  {isDamaged && attackingPokemon?.isPlayer && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="text-6xl font-black text-red-500 animate-bounce">-{attackingPokemon?.lastDamage || 0}</div>
+                    </div>
+                  )}
                 </div>
                 <div className="text-white text-center text-xs mt-2">
                   <div className="truncate font-bold text-[10px]">{gameState.player.activePokemon.name}</div>
@@ -419,11 +589,11 @@ function PuzzlePage({ challenge, onBack }) {
 
           {/* Card Expanded Modal */}
           {expandedCard && (
-            <div 
+            <div
               className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 animate-in fade-in duration-200"
               onClick={() => setExpandedCard(null)}
             >
-              <div 
+              <div
                 className="relative animate-in scale-in duration-300 origin-center"
                 onClick={(e) => e.stopPropagation()}
               >
@@ -433,8 +603,8 @@ function PuzzlePage({ challenge, onBack }) {
                 >
                   ✕
                 </button>
-                <img 
-                  src={expandedCard.image} 
+                <img
+                  src={expandedCard.image}
                   alt={expandedCard.name}
                   className="max-w-md max-h-96 rounded-lg shadow-2xl"
                   onError={(e) => {
@@ -445,10 +615,74 @@ function PuzzlePage({ challenge, onBack }) {
             </div>
           )}
 
+          {/* Attack/Ability Modal */}
+          {showAttackModal && attackingPokemon && (
+            <div
+              className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 animate-in fade-in duration-200"
+              onClick={() => setShowAttackModal(false)}
+            >
+              <div
+                className="relative bg-slate-800 rounded-xl p-6 max-w-lg w-full mx-4 border-2 border-blue-500 shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  onClick={() => setShowAttackModal(false)}
+                  className="absolute -top-3 -right-3 w-8 h-8 bg-red-500 hover:bg-red-600 transition-colors rounded-full flex items-center justify-center font-bold text-white z-10"
+                >
+                  ✕
+                </button>
+
+                <h2 className="text-2xl font-bold text-white mb-2">{attackingPokemon.pokemon.name}</h2>
+                <div className="text-blue-300 mb-4 text-sm">
+                  HP: {attackingPokemon.pokemon.hp}/{attackingPokemon.pokemon.maxHp}
+                </div>
+
+                {/* Ability */}
+                {attackingPokemon.pokemon.ability && (
+                  <div className="mb-4 bg-purple-900/50 border border-purple-600 rounded-lg p-4">
+                    <h3 className="text-lg font-bold text-purple-300 mb-2">
+                      Ability: {attackingPokemon.pokemon.ability.name}
+                    </h3>
+                    <p className="text-slate-300 text-sm">{attackingPokemon.pokemon.ability.effect}</p>
+                  </div>
+                )}
+
+                {/* Attacks */}
+                {attackingPokemon.pokemon.attacks && attackingPokemon.pokemon.attacks.length > 0 && (
+                  <div className="space-y-3">
+                    <h3 className="text-lg font-bold text-white mb-2">Attacks:</h3>
+                    {attackingPokemon.pokemon.attacks.map((attack, idx) => (
+                      <div
+                        key={idx}
+                        className="bg-slate-700/80 border border-slate-600 rounded-lg p-4 hover:border-yellow-400 transition-colors cursor-pointer"
+                        onClick={() => handleAttack(attack)}
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="text-xl font-bold text-yellow-400">{attack.name}</h4>
+                          <div className="text-2xl font-black text-red-400">{attack.damage}</div>
+                        </div>
+                        <div className="flex gap-1 mb-2">
+                          {attack.cost.map((energy, i) => (
+                            <div key={i} className="w-6 h-6 rounded-full bg-slate-600 border border-slate-400 flex items-center justify-center text-[10px] text-white font-bold">
+                              {energy[0]}
+                            </div>
+                          ))}
+                        </div>
+                        {attack.effect && (
+                          <p className="text-slate-300 text-sm italic">{attack.effect}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Player Info and Action Button */}
           <div className="flex gap-4 items-center">
             <div className="bg-slate-700/50 px-4 py-2 rounded text-white text-sm">
-              <span className="text-slate-400">Prizes Left:</span> <span className="font-bold">3</span>
+              <span className="text-slate-400">Prizes Left:</span> <span className="font-bold">{gameState.player.prizes}</span>
             </div>
             <button className="ml-auto px-8 py-3 bg-yellow-500 text-slate-900 font-bold rounded-lg hover:bg-yellow-400 transition-colors">
               Play Selected Card
@@ -458,6 +692,79 @@ function PuzzlePage({ challenge, onBack }) {
             </button>
           </div>
         </div>
+
+        {/* Bench Selection Modal */}
+        {showBenchSelect && (
+          <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 animate-in fade-in duration-200">
+            <div className="bg-slate-800 rounded-xl p-8 max-w-3xl w-full mx-4 border-2 border-yellow-500 shadow-2xl">
+              <h2 className="text-3xl font-bold text-white mb-4 text-center">
+                {showBenchSelect === 'player' ? 'Your' : "Opponent's"} Active Pokémon was Knocked Out!
+              </h2>
+              <p className="text-slate-300 text-center mb-6">
+                Select a Pokémon from the bench to become the new Active Pokémon
+              </p>
+
+              <div className="grid grid-cols-5 gap-4">
+                {gameState[showBenchSelect].bench.map((pokemon, idx) => (
+                  pokemon ? (
+                    <div
+                      key={idx}
+                      onClick={() => handleBenchPromotion(idx)}
+                      className="cursor-pointer bg-slate-700 border-2 border-slate-600 rounded-lg p-2 hover:border-yellow-400 hover:scale-105 transition-all"
+                    >
+                      <img
+                        src={pokemon.image}
+                        alt={pokemon.name}
+                        className="w-full h-24 object-cover rounded"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.parentElement.innerHTML = `<div class="w-full h-24 flex items-center justify-center text-white text-xs text-center p-1">${pokemon.name}</div>`;
+                        }}
+                      />
+                      <div className="text-white text-xs text-center mt-2 font-bold">{pokemon.name}</div>
+                    </div>
+                  ) : null
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Win Screen Modal */}
+        {gameWinner && (
+          <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 animate-in fade-in duration-200">
+            <div className="bg-gradient-to-br from-yellow-500 to-orange-600 rounded-xl p-12 max-w-2xl w-full mx-4 border-4 border-yellow-300 shadow-2xl text-center">
+              <div className="text-8xl mb-6">🏆</div>
+              <h2 className="text-5xl font-black text-white mb-4">
+                {gameWinner === 'player' ? 'YOU WIN!' : 'YOU LOSE!'}
+              </h2>
+              <p className="text-2xl text-white mb-8">
+                {gameWinner === 'player'
+                  ? 'Congratulations! You defeated your opponent!'
+                  : 'Better luck next time!'}
+              </p>
+              <div className="flex gap-4 justify-center">
+                <button
+                  onClick={onBack}
+                  className="px-8 py-4 bg-white text-slate-900 font-bold text-xl rounded-lg hover:bg-slate-100 transition-colors"
+                >
+                  Back to Challenges
+                </button>
+                <button
+                  onClick={() => {
+                    setCurrentGameState(null);
+                    setGameWinner(null);
+                    setKnockedOut(null);
+                    setShowBenchSelect(false);
+                  }}
+                  className="px-8 py-4 bg-slate-800 text-white font-bold text-xl rounded-lg hover:bg-slate-700 transition-colors"
+                >
+                  Retry Challenge
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
