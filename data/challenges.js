@@ -64,12 +64,16 @@ export const challenges = [
       ],
       deckCount: 8,
       hand: [
-        { name: "Thunderbolt", image: "https://images.pokemontcg.io/sv4/58.png" },
-        { name: "Electric Gym", image: "https://images.pokemontcg.io/sv4/70.png" },
-        { name: "Zap Cannon", image: "https://images.pokemontcg.io/sv4/59.png" },
-        { name: "Thunder Wave", image: "https://images.pokemontcg.io/sv4/60.png" },
-        { name: "Pikachu ex", image: "https://images.pokemontcg.io/sv3pt5/3.png" },
-        { name: "Super Potion", image: "https://images.pokemontcg.io/sv4/61.png" }
+        { name: "Thunderbolt", image: "https://images.pokemontcg.io/sv4/58.png", type: "trainer" },
+        { name: "Electric Gym", image: "https://images.pokemontcg.io/sv4/70.png", type: "trainer" },
+        { name: "Zap Cannon", image: "https://images.pokemontcg.io/sv4/59.png", type: "trainer" },
+        { name: "Thunder Wave", image: "https://images.pokemontcg.io/sv4/60.png", type: "trainer" },
+        { name: "Pikachu ex", image: "https://images.pokemontcg.io/sv3pt5/3.png", type: "pokemon" },
+        { name: "Super Potion", image: "https://images.pokemontcg.io/sv4/61.png", type: "trainer" },
+        { name: "Electric Energy", image: "https://images.pokemontcg.io/sv04/194.png", type: "energy", energyType: "Electric" },
+        { name: "Electric Energy", image: "https://images.pokemontcg.io/sv04/194.png", type: "energy", energyType: "Electric" },
+        { name: "Electric Energy", image: "https://images.pokemontcg.io/sv04/194.png", type: "energy", energyType: "Electric" },
+        { name: "Electric Energy", image: "https://images.pokemontcg.io/sv04/194.png", type: "energy", energyType: "Electric" }
       ]
     }
   },
