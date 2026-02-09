@@ -10,6 +10,7 @@ export const challenges = [
       activePokemon: {
         name: "Snorlax",
         hp: 150,
+        maxHp: 150,
         image: "https://images.pokemontcg.io/sv3pt5/60.png"
       },
       bench: [
@@ -25,6 +26,7 @@ export const challenges = [
       activePokemon: {
         name: "Pikachu ex",
         hp: 120,
+        maxHp: 120,
         image: "https://images.pokemontcg.io/sv3pt5/3.png"
       },
       bench: [
@@ -55,6 +57,7 @@ export const challenges = [
       activePokemon: {
         name: "Mew VMAX",
         hp: 310,
+        maxHp: 310,
         image: "https://images.pokemontcg.io/sv4pt/114.png"
       },
       bench: [
@@ -70,6 +73,7 @@ export const challenges = [
       activePokemon: {
         name: "Lugia VSTAR",
         hp: 280,
+        maxHp: 280,
         image: "https://images.pokemontcg.io/sv3pt5/172.png"
       },
       bench: [
@@ -100,6 +104,7 @@ export const challenges = [
       activePokemon: {
         name: "Giratina VSTAR",
         hp: 280,
+        maxHp: 280,
         image: "https://images.pokemontcg.io/sv4pt/130.png"
       },
       bench: [
@@ -115,6 +120,7 @@ export const challenges = [
       activePokemon: {
         name: "Rayquaza ex",
         hp: 200,
+        maxHp: 200,
         image: "https://images.pokemontcg.io/sv4/384.png"
       },
       bench: [
@@ -144,6 +150,7 @@ export const challenges = [
       activePokemon: {
         name: "Charizard ex",
         hp: 210,
+        maxHp: 210,
         image: "https://images.pokemontcg.io/sv4/6.png"
       },
       bench: [
@@ -159,6 +166,7 @@ export const challenges = [
       activePokemon: {
         name: "Blastoise",
         hp: 160,
+        maxHp: 160,
         image: "https://images.pokemontcg.io/sv4/9.png"
       },
       bench: [
@@ -189,6 +197,7 @@ export const challenges = [
       activePokemon: {
         name: "Alakazam ex",
         hp: 250,
+        maxHp: 250,
         image: "https://images.pokemontcg.io/sv4/65.png"
       },
       bench: [
@@ -204,6 +213,7 @@ export const challenges = [
       activePokemon: {
         name: "Dragonite ex",
         hp: 180,
+        maxHp: 180,
         image: "https://images.pokemontcg.io/sv4/149.png"
       },
       bench: [
@@ -233,6 +243,7 @@ export const challenges = [
       activePokemon: {
         name: "Calyrex VMAX",
         hp: 320,
+        maxHp: 320,
         image: "https://images.pokemontcg.io/sv4pt/165.png"
       },
       bench: [
@@ -248,6 +259,7 @@ export const challenges = [
       activePokemon: {
         name: "Grimmsnarl VMAX",
         hp: 310,
+        maxHp: 310,
         image: "https://images.pokemontcg.io/sv4/862.png"
       },
       bench: [
