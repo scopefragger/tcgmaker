@@ -1,14 +1,6 @@
 import React, { useState } from 'react';
 import { Play, Trophy, Shield, ArrowRight, Star, Clock, Users } from 'lucide-react';
-
-const challenges = [
-  { id: 1, title: "The Snorlax Stall", difficulty: "Beginner", rating: 4.2, plays: 1200, time: "5 min" },
-  { id: 2, title: "Mew VMAX Sweep", difficulty: "Intermediate", rating: 4.8, plays: 2400, time: "8 min" },
-  { id: 3, title: "Energy Denial Escape", difficulty: "Advanced", rating: 4.5, plays: 1800, time: "10 min" },
-  { id: 4, title: "Legendary Showdown", difficulty: "Expert", rating: 4.9, plays: 3100, time: "12 min" },
-  { id: 5, title: "Rare Candy Combo", difficulty: "Intermediate", rating: 4.3, plays: 950, time: "7 min" },
-  { id: 6, title: "Bench Destruction", difficulty: "Advanced", rating: 4.6, plays: 1450, time: "9 min" },
-];
+import { challenges } from './data/challenges.js';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState('home');
@@ -166,17 +158,18 @@ function ChallengeCard({ challenge, onSelect }) {
     'Intermediate': 'bg-blue-100 text-blue-800',
     'Advanced': 'bg-purple-100 text-purple-800',
     'Expert': 'bg-red-100 text-red-800',
+    'Master': 'bg-orange-100 text-orange-800',
   };
 
   return (
     <div onClick={onSelect} className="group cursor-pointer bg-white border border-slate-200 rounded-xl p-6 hover:border-blue-400 hover:shadow-lg transition-all hover:-translate-y-1">
       <div className="flex items-start justify-between mb-4">
-        <span className={`text-xs font-bold px-3 py-1 rounded-full ${difficultyColor[challenge.difficulty]}`}>
+        <span className={`text-xs font-bold px-3 py-1 rounded-full ${difficultyColor[challenge.difficulty] || 'bg-slate-100 text-slate-800'}`}>
           {challenge.difficulty}
         </span>
         <div className="flex items-center gap-1">
-          <Star className="text-yellow-400 fill-yellow-400" size={16} />
-          <span className="text-sm font-semibold text-slate-900">{challenge.rating}</span>
+          <Trophy className="text-yellow-400" size={16} />
+          <span className="text-sm font-semibold text-slate-900">{challenge.reward}</span>
         </div>
       </div>
 
@@ -184,16 +177,9 @@ function ChallengeCard({ challenge, onSelect }) {
         {challenge.title}
       </h3>
 
-      <div className="flex items-center gap-4 text-sm text-slate-600 mb-6">
-        <div className="flex items-center gap-1">
-          <Clock size={16} />
-          <span>{challenge.time}</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <Users size={16} />
-          <span>{challenge.plays.toLocaleString()} plays</span>
-        </div>
-      </div>
+      <p className="text-sm text-slate-600 mb-6">
+        {challenge.description}
+      </p>
 
       <button className="w-full bg-blue-600 text-white font-semibold py-2 rounded-lg hover:bg-blue-700 transition-colors">
         Play Challenge
@@ -206,37 +192,20 @@ function PuzzlePage({ challenge, onBack }) {
   const [selectedCard, setSelectedCard] = useState(null);
   const [expandedCard, setExpandedCard] = useState(null);
 
-  // Mock game state with real card images
+  // Load game state from challenge config
   const gameState = {
     opponent: {
-      activePokemon: { name: "Charizard", hp: 150, maxHp: 150, image: "https://images.pokemontcg.io/base1/4/high.png" },
-      bench: [
-        { name: "Pikachu", hp: 60, image: "https://images.pokemontcg.io/base1/25/high.png" },
-        { name: "Dragonite", hp: 120, image: "https://images.pokemontcg.io/base1/149/high.png" },
-        null,
-        null,
-        null,
-      ],
+      activePokemon: challenge.opponent.activePokemon,
+      bench: challenge.opponent.bench,
+      deckCount: challenge.opponent.deckCount,
       hand: 7,
     },
     player: {
-      activePokemon: { name: "Blastoise", hp: 130, maxHp: 130, image: "https://images.pokemontcg.io/base1/2/high.png" },
-      bench: [
-        { name: "Squirtle", hp: 40, image: "https://images.pokemontcg.io/base1/63/high.png" },
-        { name: "Wartortle", hp: 80, image: "https://images.pokemontcg.io/base1/62/high.png" },
-        { name: "Venusaur", hp: 110, image: "https://images.pokemontcg.io/base1/15/high.png" },
-        null,
-        null,
-      ],
-      hand: [
-        { name: "Water Energy", type: "Energy", image: "https://images.pokemontcg.io/base1/102/high.png" },
-        { name: "Potion", type: "Trainer", image: "https://images.pokemontcg.io/base1/94/high.png" },
-        { name: "Professor Oak", type: "Trainer", image: "https://images.pokemontcg.io/base1/88/high.png" },
-        { name: "Water Energy", type: "Energy", image: "https://images.pokemontcg.io/base1/102/high.png" },
-        { name: "Switch", type: "Trainer", image: "https://images.pokemontcg.io/base1/92/high.png" },
-      ],
-      deck: 12,
+      activePokemon: challenge.player.activePokemon,
+      bench: challenge.player.bench,
+      deck: challenge.player.deckCount,
       discard: 8,
+      hand: challenge.player.hand,
     },
   };
 

@@ -1,10 +1,5 @@
 import { Play, BookOpen, Trophy } from 'lucide-react';
-
-const puzzles = [
-  { id: 1, title: "The Snorlax Stall", difficulty: "Intermediate", reward: "200 XP" },
-  { id: 2, title: "Mew VMAX Sweep", difficulty: "Expert", reward: "500 XP" },
-  { id: 3, title: "Energy Denial Escape", difficulty: "Master", reward: "1000 XP" },
-];
+import { challenges } from '../data/challenges.js';
 
 export default function Home({ onSelectPuzzle }) {
   return (
@@ -44,7 +39,7 @@ export default function Home({ onSelectPuzzle }) {
         <Trophy size={24} /> Available Challenges
       </h2>
       <div className="grid md:grid-cols-3 gap-8">
-        {puzzles.map((p) => (
+        {challenges.map((p) => (
           <div 
             key={p.id}
             onClick={() => onSelectPuzzle(p)}
