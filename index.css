@@ -1,14 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-/* Optional: Add your dark mode styles here */
 body {
-  background-image: url('./src/background.jpg');
-@layer utilities {
-  .dark {
-    /* Your dark mode specific styles */
-  }
+  background-color: #ffffff;
 }
-
-
