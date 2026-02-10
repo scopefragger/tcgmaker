@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Play, Trophy, Shield, ArrowRight, Star, Clock, Users } from 'lucide-react';
+import { Play, Trophy, Shield, ArrowRight, Star, Clock, Users, Trash2 } from 'lucide-react';
 import { challenges } from './data/challenges.js';
+import ScenarioMaker from './ScenarioMaker.jsx';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState('home');
@@ -15,6 +16,10 @@ export default function App() {
     setCurrentPage('puzzle');
   };
 
+  const handleScenarioMaker = () => {
+    setCurrentPage('scenario-maker');
+  };
+
   if (currentPage === 'challenges') {
     return <ChallengesPage onSelectChallenge={handleSelectChallenge} onBack={() => setCurrentPage('home')} />;
   }
@@ -23,10 +28,14 @@ export default function App() {
     return <PuzzlePage challenge={selectedChallenge} onBack={() => setCurrentPage('challenges')} />;
   }
 
-  return <HomePage onPlayNow={handlePlayNow} />;
+  if (currentPage === 'scenario-maker') {
+    return <ScenarioMaker onBack={() => setCurrentPage('home')} />;
+  }
+
+  return <HomePage onPlayNow={handlePlayNow} onScenarioMaker={handleScenarioMaker} />;
 }
 
-function HomePage({ onPlayNow }) {
+function HomePage({ onPlayNow, onScenarioMaker }) {
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
@@ -39,9 +48,14 @@ function HomePage({ onPlayNow }) {
           <span className="hover:text-slate-900 cursor-pointer transition-colors">FAQ</span>
           <span className="hover:text-slate-900 cursor-pointer transition-colors">Rules Guide</span>
         </div>
-        <button onClick={onPlayNow} className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors">
-          Play now
-        </button>
+        <div className="flex gap-3">
+          <button onClick={onScenarioMaker} className="px-6 py-2 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors">
+            Scenario Maker
+          </button>
+          <button onClick={onPlayNow} className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors">
+            Play now
+          </button>
+        </div>
       </nav>
 
       {/* Hero Section */}
@@ -120,6 +134,27 @@ function HomePage({ onPlayNow }) {
 }
 
 function ChallengesPage({ onSelectChallenge, onBack }) {
+  const [activeTab, setActiveTab] = useState('official');
+  const [customScenarios, setCustomScenarios] = useState([]);
+
+  // Load custom scenarios from localStorage
+  React.useEffect(() => {
+    const saved = localStorage.getItem('customScenarios');
+    if (saved) {
+      try {
+        setCustomScenarios(JSON.parse(saved));
+      } catch (e) {
+        console.error('Failed to load custom scenarios:', e);
+      }
+    }
+  }, []);
+
+  const deleteCustomScenario = (id) => {
+    const updated = customScenarios.filter(s => s.id !== id);
+    setCustomScenarios(updated);
+    localStorage.setItem('customScenarios', JSON.stringify(updated));
+  };
+
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
@@ -135,30 +170,80 @@ function ChallengesPage({ onSelectChallenge, onBack }) {
       {/* Challenges Section */}
       <div className="max-w-7xl mx-auto px-8 py-16">
         <h2 className="text-4xl font-black text-slate-900 mb-4">Select a Challenge</h2>
-        <p className="text-slate-600 mb-12">Pick from hundreds of puzzles. Start easy, master the advanced scenarios.</p>
+        <p className="text-slate-600 mb-8">Pick from hundreds of puzzles. Start easy, master the advanced scenarios.</p>
+
+        {/* Tabs */}
+        <div className="flex gap-4 mb-8 border-b border-slate-200">
+          <button
+            onClick={() => setActiveTab('official')}
+            className={`px-6 py-3 font-semibold transition-colors ${
+              activeTab === 'official'
+                ? 'text-blue-600 border-b-2 border-blue-600'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Official Challenges
+          </button>
+          <button
+            onClick={() => setActiveTab('custom')}
+            className={`px-6 py-3 font-semibold transition-colors ${
+              activeTab === 'custom'
+                ? 'text-blue-600 border-b-2 border-blue-600'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            My Scenarios ({customScenarios.length})
+          </button>
+        </div>
 
         {/* Challenge Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {challenges.map((challenge) => (
-            <ChallengeCard 
-              key={challenge.id} 
-              challenge={challenge}
-              onSelect={() => onSelectChallenge(challenge)}
-            />
-          ))}
+          {activeTab === 'official' ? (
+            challenges.map((challenge) => (
+              <ChallengeCard
+                key={challenge.id}
+                challenge={challenge}
+                onSelect={() => onSelectChallenge(challenge)}
+              />
+            ))
+          ) : (
+            customScenarios.length > 0 ? (
+              customScenarios.map((challenge) => (
+                <ChallengeCard
+                  key={challenge.id}
+                  challenge={challenge}
+                  onSelect={() => onSelectChallenge(challenge)}
+                  isCustom={true}
+                  onDelete={() => deleteCustomScenario(challenge.id)}
+                />
+              ))
+            ) : (
+              <div className="col-span-3 text-center py-12">
+                <p className="text-slate-600 mb-4">No custom scenarios yet!</p>
+                <p className="text-slate-500 text-sm">Create your first scenario in the Scenario Maker.</p>
+              </div>
+            )
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function ChallengeCard({ challenge, onSelect }) {
+function ChallengeCard({ challenge, onSelect, isCustom, onDelete }) {
   const difficultyColor = {
     'Beginner': 'bg-green-100 text-green-800',
     'Intermediate': 'bg-blue-100 text-blue-800',
     'Advanced': 'bg-purple-100 text-purple-800',
     'Expert': 'bg-red-100 text-red-800',
     'Master': 'bg-orange-100 text-orange-800',
+  };
+
+  const handleDelete = (e) => {
+    e.stopPropagation();
+    if (confirm('Are you sure you want to delete this scenario?')) {
+      onDelete();
+    }
   };
 
   return (
@@ -181,9 +266,19 @@ function ChallengeCard({ challenge, onSelect }) {
         {challenge.description}
       </p>
 
-      <button className="w-full bg-blue-600 text-white font-semibold py-2 rounded-lg hover:bg-blue-700 transition-colors">
-        Play Challenge
-      </button>
+      <div className={`flex gap-2 ${isCustom ? '' : ''}`}>
+        <button className="flex-1 bg-blue-600 text-white font-semibold py-2 rounded-lg hover:bg-blue-700 transition-colors">
+          Play Challenge
+        </button>
+        {isCustom && (
+          <button
+            onClick={handleDelete}
+            className="px-3 bg-red-600 text-white font-semibold py-2 rounded-lg hover:bg-red-700 transition-colors"
+          >
+            <Trash2 size={16} />
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -210,7 +305,7 @@ function PuzzlePage({ challenge, onBack }) {
       activePokemon: { ...challenge.opponent.activePokemon, energy: [] },
       bench: challenge.opponent.bench,
       deckCount: challenge.opponent.deckCount,
-      hand: 7,
+      hand: challenge.opponent.hand || [],
       prizes: 3,
     },
     player: {
@@ -343,6 +438,92 @@ function PuzzlePage({ challenge, onBack }) {
     setDraggedCard(null);
   };
 
+  // Handle opponent's turn (attach energy and attack)
+  const executeOpponentTurn = (gameStateAfterPlayerTurn) => {
+    setTimeout(() => {
+      const newGameState = { ...gameStateAfterPlayerTurn };
+
+      // Step 1: Attach energy if available
+      const energyCards = newGameState.opponent.hand.filter(card => card.type === 'energy');
+      if (energyCards.length > 0) {
+        const energyToAttach = energyCards[0];
+        newGameState.opponent.activePokemon = {
+          ...newGameState.opponent.activePokemon,
+          energy: [...(newGameState.opponent.activePokemon.energy || []), energyToAttach]
+        };
+        // Remove energy from hand
+        const energyIndex = newGameState.opponent.hand.findIndex(card => card.type === 'energy');
+        newGameState.opponent.hand = newGameState.opponent.hand.filter((_, idx) => idx !== energyIndex);
+        setCurrentGameState(newGameState);
+      }
+
+      // Step 2: Find an attack the opponent can use
+      setTimeout(() => {
+        const opponentPokemon = newGameState.opponent.activePokemon;
+        const usableAttacks = (opponentPokemon.attacks || []).filter(attack =>
+          canUseAttack(attack, opponentPokemon)
+        );
+
+        if (usableAttacks.length > 0) {
+          // Use the first available attack
+          const selectedAttack = usableAttacks[0];
+
+          // Set up opponent attack
+          setAttackingPokemon({ pokemon: opponentPokemon, isPlayer: false, lastDamage: selectedAttack.damage });
+          setShowAttackModal(false);
+          setIsAttacking(true);
+
+          // Execute attack animation and damage
+          setTimeout(() => {
+            setIsAttacking(false);
+            setIsDamaged(true);
+
+            // Apply damage to player
+            const attackGameState = { ...newGameState };
+            const targetPokemon = attackGameState.player.activePokemon;
+            targetPokemon.hp = Math.max(0, targetPokemon.hp - selectedAttack.damage);
+            attackGameState.player.activePokemon = targetPokemon;
+            setCurrentGameState(attackGameState);
+
+            // Remove damage animation and check for knockout
+            setTimeout(() => {
+              setIsDamaged(false);
+
+              // Check if player's Pokemon was knocked out
+              if (targetPokemon.hp === 0) {
+                setKnockedOut('player');
+
+                // Death animation duration
+                setTimeout(() => {
+                  // Opponent takes a prize card
+                  attackGameState.opponent.prizes = (attackGameState.opponent.prizes || 3) - 1;
+
+                  // Check for win conditions
+                  if (attackGameState.opponent.prizes === 0) {
+                    setGameWinner('opponent');
+                    setCurrentGameState(attackGameState);
+                    return;
+                  }
+
+                  // Check if there's a bench to promote from
+                  const hasBench = attackGameState.player.bench.some(p => p !== null);
+                  if (!hasBench) {
+                    setGameWinner('opponent');
+                    setCurrentGameState(attackGameState);
+                  } else {
+                    // Show bench selection for player
+                    setShowBenchSelect('player');
+                    setCurrentGameState(attackGameState);
+                  }
+                }, 1000);
+              }
+            }, 600);
+          }, 500);
+        }
+      }, 1500); // Wait 1.5 seconds after energy attachment
+    }, 1000); // Wait 1 second before starting opponent turn
+  };
+
   // Handle bench promotion
   const handleBenchPromotion = (benchIndex) => {
     const newGameState = { ...currentGameState };
@@ -465,14 +646,21 @@ function PuzzlePage({ challenge, onBack }) {
                 newGameState.opponent.activePokemon = {
                   ...promotedPokemon,
                   hp: promotedPokemon.hp || promotedPokemon.maxHp || 150,
-                  maxHp: promotedPokemon.maxHp || 150
+                  maxHp: promotedPokemon.maxHp || 150,
+                  energy: []
                 };
                 newGameState.opponent.bench[firstBenchIndex] = null;
                 setCurrentGameState(newGameState);
                 setKnockedOut(null);
+
+                // Opponent was knocked out by player - execute opponent turn after promotion
+                executeOpponentTurn(newGameState);
               }
             }
           }, 1000);
+        } else if (attackingPokemon.isPlayer) {
+          // No knockout - if player attacked, trigger opponent's turn
+          executeOpponentTurn(newGameState);
         }
       }, 600);
     }, 500);
@@ -581,6 +769,19 @@ function PuzzlePage({ challenge, onBack }) {
                   <div className="truncate font-bold text-[10px]">{gameState.opponent.activePokemon.name}</div>
                   <div className="font-bold">{gameState.opponent.activePokemon.hp}/{gameState.opponent.activePokemon.maxHp} HP</div>
                 </div>
+                {/* Opponent's Attached Energy */}
+                {gameState.opponent.activePokemon.energy && gameState.opponent.activePokemon.energy.length > 0 && (
+                  <div className="mt-2">
+                    <div className="text-white text-[10px] font-semibold mb-1">Energy:</div>
+                    <div className="flex gap-1 justify-center flex-wrap">
+                      {gameState.opponent.activePokemon.energy.map((energy, idx) => (
+                        <div key={idx} className="w-6 h-6 rounded-full bg-yellow-500 border-2 border-yellow-300 flex items-center justify-center text-[10px] font-bold text-slate-900">
+                          {energy.energyType[0]}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -588,7 +789,7 @@ function PuzzlePage({ challenge, onBack }) {
           {/* Opponent Info */}
           <div className="flex gap-4 text-white text-sm">
             <div className="bg-slate-700/50 px-4 py-2 rounded">
-              <span className="text-slate-400">Hand:</span> {gameState.opponent.hand} cards
+              <span className="text-slate-400">Hand:</span> {Array.isArray(gameState.opponent.hand) ? gameState.opponent.hand.length : gameState.opponent.hand} cards
             </div>
             <div className="bg-slate-700/50 px-4 py-2 rounded">
               <span className="text-slate-400">Prizes:</span> {gameState.opponent.prizes} remaining
