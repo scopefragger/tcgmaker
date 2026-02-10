@@ -199,18 +199,22 @@ function PuzzlePage({ challenge, onBack }) {
   const [knockedOut, setKnockedOut] = useState(null);
   const [showBenchSelect, setShowBenchSelect] = useState(false);
   const [gameWinner, setGameWinner] = useState(null);
+  const [energyAttachedThisTurn, setEnergyAttachedThisTurn] = useState(false);
+  const [draggedCard, setDraggedCard] = useState(null);
+  const [hasRetreatedThisTurn, setHasRetreatedThisTurn] = useState(false);
+  const [showRetreatModal, setShowRetreatModal] = useState(false);
 
   // Load game state from challenge config
   const initialGameState = {
     opponent: {
-      activePokemon: challenge.opponent.activePokemon,
+      activePokemon: { ...challenge.opponent.activePokemon, energy: [] },
       bench: challenge.opponent.bench,
       deckCount: challenge.opponent.deckCount,
       hand: 7,
       prizes: 3,
     },
     player: {
-      activePokemon: challenge.player.activePokemon,
+      activePokemon: { ...challenge.player.activePokemon, energy: [] },
       bench: challenge.player.bench,
       deck: challenge.player.deckCount,
       discard: 8,
@@ -232,6 +236,111 @@ function PuzzlePage({ challenge, onBack }) {
       setAttackingPokemon({ pokemon, isPlayer });
       setShowAttackModal(true);
     }
+  };
+
+  // Check if attack can be used (has enough energy)
+  const canUseAttack = (attack, pokemon) => {
+    const attachedEnergy = pokemon.energy || [];
+    const energyCounts = {};
+
+    // Count attached energy by type
+    attachedEnergy.forEach(energy => {
+      energyCounts[energy.energyType] = (energyCounts[energy.energyType] || 0) + 1;
+    });
+
+    // Check if we have enough energy for each type required
+    const requiredCounts = {};
+    attack.cost.forEach(energyType => {
+      requiredCounts[energyType] = (requiredCounts[energyType] || 0) + 1;
+    });
+
+    // Validate requirements
+    for (const [type, count] of Object.entries(requiredCounts)) {
+      if (type === 'Colorless') continue; // Colorless can be satisfied by any energy
+      if ((energyCounts[type] || 0) < count) {
+        return false;
+      }
+    }
+
+    // Check total energy (including colorless requirement)
+    const totalRequired = attack.cost.length;
+    const totalAttached = attachedEnergy.length;
+
+    return totalAttached >= totalRequired;
+  };
+
+  // Check if can retreat
+  const canRetreat = () => {
+    if (hasRetreatedThisTurn) return false;
+    const activePokemon = gameState.player.activePokemon;
+    const retreatCost = activePokemon.retreatCost || 0;
+    const attachedEnergy = activePokemon.energy || [];
+    const hasBench = gameState.player.bench.some(p => p !== null);
+    return attachedEnergy.length >= retreatCost && hasBench;
+  };
+
+  // Handle retreat initiation
+  const handleRetreat = () => {
+    if (!canRetreat()) {
+      if (hasRetreatedThisTurn) {
+        alert('You can only retreat once per turn!');
+      } else if (!gameState.player.bench.some(p => p !== null)) {
+        alert('You have no Pokémon on your bench to switch to!');
+      } else {
+        alert('Not enough energy to retreat!');
+      }
+      return;
+    }
+    setShowRetreatModal(true);
+  };
+
+  // Handle retreat completion
+  const handleRetreatComplete = (benchIndex) => {
+    const newGameState = { ...currentGameState };
+    const activePokemon = newGameState.player.activePokemon;
+    const retreatCost = activePokemon.retreatCost || 0;
+    const benchPokemon = newGameState.player.bench[benchIndex];
+
+    // Discard energy for retreat cost
+    const remainingEnergy = activePokemon.energy.slice(retreatCost);
+    activePokemon.energy = remainingEnergy;
+
+    // Swap active and bench Pokémon (preserve energy on both)
+    newGameState.player.bench[benchIndex] = { ...activePokemon };
+    newGameState.player.activePokemon = {
+      ...benchPokemon,
+      energy: benchPokemon.energy || []
+    };
+
+    setCurrentGameState(newGameState);
+    setHasRetreatedThisTurn(true);
+    setShowRetreatModal(false);
+  };
+
+  // Handle energy attachment
+  const handleEnergyAttachment = (cardIndex) => {
+    const card = gameState.player.hand[cardIndex];
+
+    if (card.type !== 'energy') return;
+    if (energyAttachedThisTurn) {
+      alert('You can only attach one energy per turn!');
+      return;
+    }
+
+    const newGameState = { ...currentGameState };
+
+    // Add energy to active Pokémon
+    newGameState.player.activePokemon = {
+      ...newGameState.player.activePokemon,
+      energy: [...(newGameState.player.activePokemon.energy || []), card]
+    };
+
+    // Remove card from hand
+    newGameState.player.hand = newGameState.player.hand.filter((_, idx) => idx !== cardIndex);
+
+    setCurrentGameState(newGameState);
+    setEnergyAttachedThisTurn(true);
+    setDraggedCard(null);
   };
 
   // Handle bench promotion
@@ -266,6 +375,10 @@ function PuzzlePage({ challenge, onBack }) {
   // Handle attack execution
   const handleAttack = (attack) => {
     setShowAttackModal(false);
+
+    // Reset energy attachment and retreat for next turn (opponent's turn, then back to player)
+    setEnergyAttachedThisTurn(false);
+    setHasRetreatedThisTurn(false);
 
     // Store attack damage for animation display
     setAttackingPokemon(prev => ({ ...prev, lastDamage: attack.damage }));
@@ -498,8 +611,19 @@ function PuzzlePage({ challenge, onBack }) {
                     isDamaged && attackingPokemon?.isPlayer ? 'animate-shake bg-red-600/70' : ''
                   } ${isAttacking && !attackingPokemon?.isPlayer ? 'ring-4 ring-yellow-400' : ''} ${
                     knockedOut === 'player' ? 'animate-knockout' : ''
-                  }`}
+                  } ${draggedCard?.type === 'energy' ? 'ring-4 ring-green-400' : ''}`}
                   onClick={() => handleActivePokemonClick(gameState.player.activePokemon, true)}
+                  onDragOver={(e) => {
+                    if (draggedCard?.type === 'energy') {
+                      e.preventDefault();
+                    }
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (draggedCard?.type === 'energy') {
+                      handleEnergyAttachment(draggedCard.index);
+                    }
+                  }}
                 >
                   <img
                     src={gameState.player.activePokemon.image}
@@ -525,6 +649,34 @@ function PuzzlePage({ challenge, onBack }) {
                 <div className="text-white text-center text-xs mt-2">
                   <div className="truncate font-bold text-[10px]">{gameState.player.activePokemon.name}</div>
                   <div className="font-bold">{gameState.player.activePokemon.hp}/{gameState.player.activePokemon.maxHp} HP</div>
+                </div>
+                {/* Attached Energy */}
+                {gameState.player.activePokemon.energy && gameState.player.activePokemon.energy.length > 0 && (
+                  <div className="mt-2">
+                    <div className="text-white text-[10px] font-semibold mb-1">Energy:</div>
+                    <div className="flex gap-1 justify-center flex-wrap">
+                      {gameState.player.activePokemon.energy.map((energy, idx) => (
+                        <div key={idx} className="w-6 h-6 rounded-full bg-yellow-500 border-2 border-yellow-300 flex items-center justify-center text-[10px] font-bold text-slate-900">
+                          {energy.energyType[0]}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Retreat Button */}
+                <div className="mt-2 flex justify-center">
+                  <button
+                    onClick={handleRetreat}
+                    disabled={!canRetreat()}
+                    className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                      canRetreat()
+                        ? 'bg-purple-600 hover:bg-purple-500 text-white cursor-pointer'
+                        : 'bg-slate-600 text-slate-400 cursor-not-allowed opacity-50'
+                    }`}
+                  >
+                    Retreat (Cost: {gameState.player.activePokemon.retreatCost || 0})
+                  </button>
                 </div>
               </div>
 
@@ -579,22 +731,25 @@ function PuzzlePage({ challenge, onBack }) {
             <div className="flex gap-3 overflow-x-auto pb-2">
               {gameState.player.hand.map((card, idx) => (
                 <div key={idx} className="flex-shrink-0">
-                  <div 
+                  <div
                     onClick={() => setSelectedCard(idx)}
+                    draggable={card.type === 'energy'}
+                    onDragStart={(e) => {
+                      if (card.type === 'energy') {
+                        setDraggedCard({ ...card, index: idx });
+                      }
+                    }}
+                    onDragEnd={() => setDraggedCard(null)}
                     className={`w-20 h-24 rounded-lg border-2 overflow-hidden cursor-pointer transition-all ${
-                      selectedCard === idx 
-                        ? 'border-yellow-400 bg-yellow-900/50 scale-105' 
+                      selectedCard === idx
+                        ? 'border-yellow-400 bg-yellow-900/50 scale-105'
                         : 'border-slate-600 bg-slate-700/50 hover:border-blue-400'
-                    }`}
+                    } ${card.type === 'energy' ? 'cursor-grab active:cursor-grabbing' : ''}`}
                   >
-                    <img 
-                      src={card.image} 
+                    <img
+                      src={card.image}
                       alt={card.name}
-                      className="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setExpandedCard(card);
-                      }}
+                      className="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity pointer-events-none"
                       onError={(e) => {
                         e.target.style.display = 'none';
                         e.target.parentElement.innerHTML = `<div class="w-full h-full flex flex-col items-center justify-center p-1 text-center"><div class="text-white font-bold text-xs">${card.name}</div></div>`;
@@ -671,28 +826,47 @@ function PuzzlePage({ challenge, onBack }) {
                 {attackingPokemon.pokemon.attacks && attackingPokemon.pokemon.attacks.length > 0 && (
                   <div className="space-y-3">
                     <h3 className="text-lg font-bold text-white mb-2">Attacks:</h3>
-                    {attackingPokemon.pokemon.attacks.map((attack, idx) => (
-                      <div
-                        key={idx}
-                        className="bg-slate-700/80 border border-slate-600 rounded-lg p-4 hover:border-yellow-400 transition-colors cursor-pointer"
-                        onClick={() => handleAttack(attack)}
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <h4 className="text-xl font-bold text-yellow-400">{attack.name}</h4>
-                          <div className="text-2xl font-black text-red-400">{attack.damage}</div>
-                        </div>
-                        <div className="flex gap-1 mb-2">
-                          {attack.cost.map((energy, i) => (
-                            <div key={i} className="w-6 h-6 rounded-full bg-slate-600 border border-slate-400 flex items-center justify-center text-[10px] text-white font-bold">
-                              {energy[0]}
+                    {attackingPokemon.pokemon.attacks.map((attack, idx) => {
+                      const canUse = canUseAttack(attack, attackingPokemon.pokemon);
+                      return (
+                        <div
+                          key={idx}
+                          className={`bg-slate-700/80 border rounded-lg p-4 transition-colors ${
+                            canUse
+                              ? 'border-slate-600 hover:border-yellow-400 cursor-pointer'
+                              : 'border-red-600 opacity-50 cursor-not-allowed'
+                          }`}
+                          onClick={() => canUse && handleAttack(attack)}
+                        >
+                          <div className="flex justify-between items-start mb-2">
+                            <h4 className={`text-xl font-bold ${canUse ? 'text-yellow-400' : 'text-gray-400'}`}>
+                              {attack.name}
+                            </h4>
+                            <div className={`text-2xl font-black ${canUse ? 'text-red-400' : 'text-gray-500'}`}>
+                              {attack.damage}
                             </div>
-                          ))}
+                          </div>
+                          <div className="flex gap-1 mb-2">
+                            {attack.cost.map((energy, i) => (
+                              <div
+                                key={i}
+                                className="w-6 h-6 rounded-full bg-slate-600 border border-slate-400 flex items-center justify-center text-[10px] text-white font-bold"
+                              >
+                                {energy[0]}
+                              </div>
+                            ))}
+                          </div>
+                          {!canUse && (
+                            <div className="text-red-400 text-xs font-bold mb-2">
+                              ⚠ Not enough energy attached!
+                            </div>
+                          )}
+                          {attack.effect && (
+                            <p className="text-slate-300 text-sm italic">{attack.effect}</p>
+                          )}
                         </div>
-                        {attack.effect && (
-                          <p className="text-slate-300 text-sm italic">{attack.effect}</p>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -745,6 +919,63 @@ function PuzzlePage({ challenge, onBack }) {
                     </div>
                   ) : null
                 ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Retreat Modal */}
+        {showRetreatModal && (
+          <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 animate-in fade-in duration-200">
+            <div className="bg-slate-800 rounded-xl p-8 max-w-3xl w-full mx-4 border-2 border-purple-500 shadow-2xl">
+              <h2 className="text-3xl font-bold text-white mb-4 text-center">
+                Retreat Your Active Pokémon
+              </h2>
+              <p className="text-slate-300 text-center mb-2">
+                Select a Pokémon from your bench to switch with {gameState.player.activePokemon.name}
+              </p>
+              <p className="text-purple-400 text-center mb-6 font-semibold">
+                Retreat Cost: {gameState.player.activePokemon.retreatCost || 0} Energy (will be discarded)
+              </p>
+
+              <div className="grid grid-cols-5 gap-4">
+                {gameState.player.bench.map((pokemon, idx) => (
+                  pokemon ? (
+                    <div
+                      key={idx}
+                      onClick={() => handleRetreatComplete(idx)}
+                      className="cursor-pointer bg-slate-700 border-2 border-slate-600 rounded-lg p-2 hover:border-purple-400 hover:scale-105 transition-all"
+                    >
+                      <img
+                        src={pokemon.image}
+                        alt={pokemon.name}
+                        className="w-full h-24 object-cover rounded"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.parentElement.innerHTML = `<div class="w-full h-24 flex items-center justify-center text-white text-xs text-center p-1">${pokemon.name}</div>`;
+                        }}
+                      />
+                      <div className="text-white text-xs text-center mt-2 font-bold">{pokemon.name}</div>
+                      {pokemon.energy && pokemon.energy.length > 0 && (
+                        <div className="flex gap-1 justify-center mt-1">
+                          {pokemon.energy.map((energy, energyIdx) => (
+                            <div key={energyIdx} className="w-4 h-4 rounded-full bg-yellow-500 border border-yellow-300 flex items-center justify-center text-[8px] font-bold text-slate-900">
+                              {energy.energyType[0]}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : null
+                ))}
+              </div>
+              <div className="mt-6 text-center">
+                <button
+                  onClick={() => setShowRetreatModal(false)}
+                  className="px-6 py-2 bg-slate-600 hover:bg-slate-500 text-white font-semibold rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
               </div>
             </div>
           </div>

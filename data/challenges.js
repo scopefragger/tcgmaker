@@ -50,14 +50,15 @@ export const challenges = [
         hp: 120,
         maxHp: 120,
         image: "https://images.pokemontcg.io/sv3pt5/3.png",
+        retreatCost: 1,
         attacks: [
           { name: "Thunder Shock", damage: 30, cost: ["Electric"], effect: "Flip a coin. If heads, the Defending Pokémon is now Paralyzed." },
           { name: "Electro Ball", damage: 120, cost: ["Electric", "Electric", "Colorless"] }
         ]
       },
       bench: [
-        { name: "Raichu", image: "https://images.pokemontcg.io/sv4/22.png" },
-        { name: "Pikachu", image: "https://images.pokemontcg.io/sv04/25.png" },
+        { name: "Raichu", image: "https://images.pokemontcg.io/sv4/22.png", hp: 90, maxHp: 90, retreatCost: 1 },
+        { name: "Pikachu", image: "https://images.pokemontcg.io/sv04/25.png", hp: 60, maxHp: 60, retreatCost: 1 },
         null,
         null,
         null
