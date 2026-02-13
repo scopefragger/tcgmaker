@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Play, Trophy, Shield, ArrowRight, Star, Clock, Users, Trash2 } from 'lucide-react';
 import { challenges } from './data/challenges.js';
 import ScenarioMaker from './ScenarioMaker.jsx';
+import GuessTheCard from './GuessTheCard.jsx';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState('home');
@@ -20,6 +21,10 @@ export default function App() {
     setCurrentPage('scenario-maker');
   };
 
+  const handleGuessTheCard = () => {
+    setCurrentPage('guess-the-card');
+  };
+
   if (currentPage === 'challenges') {
     return <ChallengesPage onSelectChallenge={handleSelectChallenge} onBack={() => setCurrentPage('home')} />;
   }
@@ -32,10 +37,14 @@ export default function App() {
     return <ScenarioMaker onBack={() => setCurrentPage('home')} />;
   }
 
-  return <HomePage onPlayNow={handlePlayNow} onScenarioMaker={handleScenarioMaker} />;
+  if (currentPage === 'guess-the-card') {
+    return <GuessTheCard onBack={() => setCurrentPage('home')} />;
+  }
+
+  return <HomePage onPlayNow={handlePlayNow} onScenarioMaker={handleScenarioMaker} onGuessTheCard={handleGuessTheCard} />;
 }
 
-function HomePage({ onPlayNow, onScenarioMaker }) {
+function HomePage({ onPlayNow, onScenarioMaker, onGuessTheCard }) {
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
@@ -115,16 +124,24 @@ function HomePage({ onPlayNow, onScenarioMaker }) {
       {/* Features Section */}
       <div className="bg-slate-50 py-16">
         <div className="max-w-7xl mx-auto px-8">
-          <div className="grid grid-cols-2 gap-12">
-            <FeatureCard 
+          <div className="grid grid-cols-3 gap-8">
+            <FeatureCard
               icon={<Play className="text-blue-600" size={32} />}
               title="Learn & Practice"
               desc="Work through carefully crafted one-turn victory scenarios. Each puzzle teaches you new strategies and card interactions."
+              onClick={onPlayNow}
             />
-            <FeatureCard 
+            <FeatureCard
               icon={<Trophy className="text-yellow-500" size={32} />}
-              title="Compete & Progress"
-              desc="Climb the global leaderboard, unlock new difficulty levels, and prove your mastery of Pokémon TCG rules."
+              title="Guess the Card"
+              desc="Test your Pokémon TCG knowledge! Random cards from the latest sets - can you guess the HP, retreat cost, weakness, and resistance?"
+              onClick={onGuessTheCard}
+            />
+            <FeatureCard
+              icon={<Shield className="text-purple-600" size={32} />}
+              title="Scenario Maker"
+              desc="Create your own custom puzzle scenarios and share them with the community. Build complex board states and challenges."
+              onClick={onScenarioMaker}
             />
           </div>
         </div>
@@ -1222,11 +1239,14 @@ function PuzzlePage({ challenge, onBack }) {
   );
 }
 
-function FeatureCard({ icon, title, desc }) {
+function FeatureCard({ icon, title, desc, onClick }) {
   return (
-    <div className="bg-white p-8 rounded-2xl border border-slate-200 hover:border-slate-300 transition-colors">
-      <div className="mb-4">{icon}</div>
-      <h3 className="text-2xl font-bold text-slate-900 mb-3">{title}</h3>
+    <div
+      onClick={onClick}
+      className="bg-white p-8 rounded-2xl border border-slate-200 hover:border-blue-400 hover:shadow-lg transition-all cursor-pointer group"
+    >
+      <div className="mb-4 group-hover:scale-110 transition-transform">{icon}</div>
+      <h3 className="text-2xl font-bold text-slate-900 mb-3 group-hover:text-blue-600 transition-colors">{title}</h3>
       <p className="text-slate-600 leading-relaxed">{desc}</p>
     </div>
   );

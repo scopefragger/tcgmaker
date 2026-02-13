@@ -201,18 +201,35 @@ export default function ScenarioMaker({ onBack }) {
     setSearchResults([]);
   };
 
-  // Search for Pokemon cards using Pokemon TCG API
+  // Search for Pokemon cards using a CORS proxy
   const searchCards = async () => {
     if (!cardSearchQuery.trim()) return;
 
     setSearching(true);
     try {
-      const response = await fetch(`https://api.pokemontcg.io/v2/cards?q=name:${cardSearchQuery}&pageSize=1`);
+      // Replace spaces with wildcards for multi-word searches
+      const searchTerm = cardSearchQuery.trim().replace(/\s+/g, '*');
+      const query = `name:*${searchTerm}*`;
+
+      // Use Vite proxy to avoid CORS
+      const apiUrl = `/api/pokemon/cards?q=${encodeURIComponent(query)}&pageSize=20&orderBy=-set.releaseDate`;
+
+      const response = await fetch(apiUrl);
+
+      if (!response.ok) {
+        throw new Error(`API returned ${response.status}`);
+      }
+
       const data = await response.json();
+
       setSearchResults(data.data || []);
+
+      if (!data.data || data.data.length === 0) {
+        alert('No cards found. Try a different search term.');
+      }
     } catch (error) {
       console.error('Error searching cards:', error);
-      alert('Failed to search cards. Please try again.');
+      alert('Failed to search cards. Please try again or enter the image URL manually.');
     }
     setSearching(false);
   };
@@ -683,7 +700,7 @@ export default function ScenarioMaker({ onBack }) {
                   placeholder="Search by Pokémon name (e.g., Pikachu, Charizard ex)"
                   value={cardSearchQuery}
                   onChange={(e) => setCardSearchQuery(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && searchCards()}
+                  onKeyDown={(e) => e.key === 'Enter' && searchCards()}
                   className="flex-1 px-4 py-2 bg-slate-700 text-white rounded border border-slate-600"
                 />
                 <button
